@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from sympy import Quaternion as spQ
-from sympy import symbols,sin,cos,sqrt,nan
+from sympy import symbols,sin,cos,sqrt,nan,simplify,nsimplify
 
 fig = plt.figure(dpi=150)
 ax = fig.add_subplot(111, projection='3d')
@@ -48,6 +48,7 @@ class Q():
         self.x = axis[0] * c1
         self.y = axis[1] * c1
         self.z = axis[2] * c1
+        self.Q = list([self.w, self.x, self.y, self.z])
 
         #для симпай
         # c1_ = sin(angle_ / 2)
@@ -186,6 +187,8 @@ class DQ():
     def copy_from_dq(self,dq):
         self.m_real=dq.m_real
         self.m_dual = dq.m_dual
+        self.m_real_=dq.m_real_
+        self.m_dual_ = dq.m_dual_
 
     def set_by_Quat_and_Vect3(self, Qreal=Q(w=1, x=0, y=0, z=0), V3=(0., 0., 0.), Qreal_=spQ(a=1, b=0, c=0, d=0), V3_=(0., 0., 0.)):
         self.m_real = Qreal.normalize()
@@ -195,7 +198,8 @@ class DQ():
         self.m_dual = Q.qs_mult(Q.q_mult(q, self.m_real), 0.5)
 
         self.m_real_ = Qreal_.normalize()
-        self.m_dual_ =
+        q_ = spQ(a=0., b=V3[0], c=V3[1], d=V3[2])
+        self.m_dual_ =q_.mul(self.m_real_).mul(0.5)
 
     def make_dual_quat_from_coord_axis_angle(self, xyz=(0., 0., 0.), axis_xyz=(1., 0., 0.), angle_dgr=0., xyz_=(0., 0., 0.), axis_xyz_=(1., 0., 0.), angle_dgr_=0):
         q = Q()
@@ -206,8 +210,8 @@ class DQ():
 
         self.set_by_Quat_and_Vect3(Qreal=q, V3=xyz, Qreal_=q.Q_, V3_=xyz_)
 
-    def make_translation(self, xyz):
-        self.make_dual_quat_from_coord_axis_angle(xyz=xyz)
+    def make_translation(self, xyz, xyz_):
+        self.make_dual_quat_from_coord_axis_angle(xyz=xyz, xyz_=xyz_)
 
     def make_rotation(self, axis_xyz, angle_dgr, axis_xyz_, angle_dgr_):
         self.make_dual_quat_from_coord_axis_angle(axis_xyz=axis_xyz, angle_dgr=angle_dgr, axis_xyz_=axis_xyz_, angle_dgr_=angle_dgr_)
@@ -239,6 +243,13 @@ class DQ():
         Qd = dq.m_dual
         self.m_real=Q.q_mult(Pr,Qr)
         self.m_dual=Q.q_sum(Q.q_mult(Pr, Qd), Q.q_mult(Pd, Qr))
+
+        Pr_ = self.m_real_
+        Pd_ = self.m_dual_
+        Qr_ = dq.m_real_
+        Qd_ = dq.m_dual_
+        self.m_real_=Pr_.mul(Qr_)
+        self.m_dual_=Pr_.mul(Qd_).add(Pd_.mul(Qr_))
         return self
 
     @staticmethod
@@ -465,6 +476,12 @@ class link():
         self.d = DH_dict['d']
         self.a = DH_dict['a']
         self.alfa = DH_dict['alfa']  # NB! этот угол применяется только для поворота СК на конце текущего линка, но он не применяется для вычисления координат текущего линка - это вытекает из условий ДХ
+
+        self.Tetta_const_ = symbols('Tetta_const')
+        self.d_ = symbols('d')
+        self.a_ = symbols('a')
+        self.alfa_ = symbols('alfa')
+
         #СК начала и конца линка
         if origin_quat is None:
             self.origin0=DQ()
@@ -482,8 +499,8 @@ class link():
         # считаем положение линка в соответсвтии с правилами ДХ:
         # 1)вычисляем СК для начальной точки линка
         dq = DQ()
-        sp_angle=symbols(f'Q{self.N}')
-        dq.make_rotation(axis_xyz=[0.,0.,1.], angle_dgr=float(Tetta) + self.Tetta_const, axis_xyz_=[0.,0.,1.], angle_dgr_=sp_angle) #из ДХ - вращаем относительно исходной оси z
+        sp_Tetta=symbols(f'Q{self.N}')
+        dq.make_rotation(axis_xyz=[0.,0.,1.], angle_dgr=float(Tetta) + self.Tetta_const, axis_xyz_=[0.,0.,1.], angle_dgr_=sp_Tetta) #из ДХ - вращаем относительно исходной оси z
         # self.origin0=DQ.dq_mult(self.origin0,dq)
         self.origin0.post_mult_by_dq(dq)
         #вспомогательные штуки для визуализации
@@ -492,8 +509,8 @@ class link():
 
         # 2)вычисляем координаты конца текущего линка, двигаем по ДХ после вращения на Tetta (п.1) на расстояния d и a
         dq_coord = DQ()
-        dq_coord.make_translation(xyz=[self.a, 0., self.d])
-        test = DQ.dq_mult(self.origin0,dq_coord)
+        dq_coord.make_translation(xyz=[self.a, 0., self.d], xyz_=[self.a_, 0., self.d_])
+        # test = DQ.dq_mult(self.origin0,dq_coord)
         self.origin1.copy_from_dq(self.origin0)
         self.origin1.post_mult_by_dq(dq_coord)
         # вспомогательные штуки для визуализации
@@ -503,12 +520,21 @@ class link():
         # 3)вычисляем координаты и ориентацию СК на конце текущего линка - она же будет базовой для последующего линка
         # по ДХ - вращаем относительно оси x текущей системы координат на угол alfa
         dq_rot = DQ()
-        dq_rot.make_rotation(axis_xyz=[1.,0.,0.], angle_dgr=self.alfa) #из ДХ - вращаем относительно новой оси x
+        sp_Alfa = symbols(f'A{self.N}')
+        dq_rot.make_rotation(axis_xyz=[1.,0.,0.], angle_dgr=self.alfa, axis_xyz_=[1.,0.,0.], angle_dgr_=sp_Alfa) #из ДХ - вращаем относительно новой оси x
         # self.origin1 = DQ.dq_mult(dq,dq_rot)
         self.origin1.post_mult_by_dq(dq_rot)
+        # self.origin1.m_real_=simplify(self.origin1.m_real_)
+        # self.origin1.m_dual_ = simplify(self.origin1.m_dual_)
         frame1=self.origin1.dq_to_frame()
         frame1.show(ls=':',lw=0.5)
         line_X=[frame0.base[0],frame1.base[0]]
         line_Y = [frame0.base[1],frame1.base[1]]
         line_Z = [frame0.base[2],frame1.base[2]]
         plt.plot(line_X,line_Y,line_Z,lw=2,c='black')
+
+        self.origin0_dq_real_formula=self.origin0.m_real_
+        self.origin0_dq_dual_formula = self.origin0.m_dual_
+        self.origin1_dq_real_formula=self.origin1.m_real_
+        self.origin1_dq_dual_formula = self.origin1.m_dual_
+        print(f'Link {self.N} completed')

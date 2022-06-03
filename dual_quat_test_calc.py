@@ -3,6 +3,7 @@ import makecharts as mc
 import dual_quat_test as dqt
 from dual_quat_test import DQ,link,frame
 import matplotlib.pyplot as plt
+from sympy import simplify
 
 DH=dict(l1=dict(Tetta=0,d=0.507,a=0.265,alfa=90),
         l2=dict(Tetta=90,d=0,a=0.7,alfa=0),
