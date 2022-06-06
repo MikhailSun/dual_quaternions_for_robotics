@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from sympy import Quaternion as spQ
 from sympy import symbols,sin,cos,sqrt,nan,simplify,nsimplify,Derivative,diff,expand,conjugate,Matrix
+import copy
 
 fig = plt.figure(dpi=150)
 ax = fig.add_subplot(111, projection='3d')
@@ -199,6 +200,14 @@ class DQ():
         to_print+= f'dual:\n'
         to_print+= str(self.m_dual_) + '\n'
         return to_print
+
+    def simplify(self):
+        self.m_real_=nsimplify(simplify(self.m_real_), tolerance=1e-10)
+        self.m_dual_ = nsimplify(simplify(self.m_dual_), tolerance=1e-10)
+
+    def insert_numbers(self,list_of_tuples_of_numbers):
+        self.m_real_=self.m_real_.subs(list_of_tuples_of_numbers)
+        self.m_dual_=self.m_dual_.subs(list_of_tuples_of_numbers)
 
     def copy_from_dq(self,dq):
         self.m_real=dq.m_real
@@ -559,7 +568,6 @@ class link():
         # 2)вычисляем координаты конца текущего линка, двигаем по ДХ после вращения на Tetta (п.1) на расстояния d и a
         dq_coord = DQ()
         dq_coord.make_translation(xyz=[self.a, 0., self.d], xyz_=[self.a_, 0., self.d_])
-        # test = DQ.dq_mult(self.origin0,dq_coord)
         self.origin1.copy_from_dq(self.origin0)
         self.origin1.post_mult_by_dq(dq_coord)
         # вспомогательные штуки для визуализации
@@ -571,10 +579,7 @@ class link():
         dq_rot = DQ()
         sp_Alfa = symbols(f'A{self.N}')
         dq_rot.make_rotation(axis_xyz=[1.,0.,0.], angle_dgr=self.alfa, axis_xyz_=[1.,0.,0.], angle_dgr_=self.alfa_) #из ДХ - вращаем относительно новой оси x
-        # self.origin1 = DQ.dq_mult(dq,dq_rot)
         self.origin1.post_mult_by_dq(dq_rot)
-        # self.origin1.m_real_=simplify(self.origin1.m_real_)
-        # self.origin1.m_dual_ = simplify(self.origin1.m_dual_)
         frame1=self.origin1.dq_to_frame()
         frame1.show(ls=':',lw=0.5)
         line_X=[frame0.base[0],frame1.base[0]]
@@ -582,51 +587,67 @@ class link():
         line_Z = [frame0.base[2],frame1.base[2]]
         plt.plot(line_X,line_Y,line_Z,lw=2,c='black')
 
-        self.origin0_dq_real_formula=self.origin0.m_real_
-        self.origin0_dq_dual_formula = self.origin0.m_dual_
-        self.origin1_dq_real_formula=self.origin1.m_real_
-        self.origin1_dq_dual_formula = self.origin1.m_dual_
+        #подставляем в формулу параметры ДХ
+        self.origin0.insert_numbers([(f'A{self.N}',np.radians(self.alfa)),
+                                        (f'Q_const{self.N}',np.radians(self.Tetta_const)),
+                                        (f'd{self.N}',self.d),
+                                        (f'a{self.N}',self.a),])
+                                        # (f'Q{self.N}',np.radians(Tetta))])
+        self.origin1.insert_numbers([(f'A{self.N}',np.radians(self.alfa)),
+                                        (f'Q_const{self.N}',np.radians(self.Tetta_const)),
+                                        (f'd{self.N}',self.d),
+                                        (f'a{self.N}',self.a),])
+                                        # (f'Q{self.N}',np.radians(Tetta))])
+        #упрощаем формулу до читабельного вида и сохраняем ее копию в объекты frame0_dq (СК начала звена) и в frame1_dq (конец звена)
+        self.origin0.simplify()
+        self.frame0_dq=copy.deepcopy(self.origin0)
+        self.origin1.simplify()
+        self.frame1_dq=copy.deepcopy(self.origin1)
+
+        #из полученных frame0_dq и frame1_dq нужно извлечь координаты x y z rx ry rz
+        как перевести данные из кватерниона в rx ry rz
+
         print(f'Link {self.N} completed')
 
     #методы для получения полностью аналитических формул
-    def get_origin0_real(self):
-        return nsimplify(self.origin0_dq_real_formula)
-
-    def get_origin1_real(self):
-        return nsimplify(self.origin1_dq_real_formula)
-
-    def get_origin0_dual(self):
-        return nsimplify(self.origin0_dq_dual_formula)
-
-    def get_origin1_dual(self):
-        return nsimplify(self.origin1_dq_dual_formula)
+    # def get_origin0_real(self):
+    #     return nsimplify(self.origin0_dq_real_formula)
+    #
+    # def get_origin1_real(self):
+    #     return nsimplify(self.origin1_dq_real_formula, tolerance=1e-12)
+    #
+    # def get_origin0_dual(self):
+    #     return nsimplify(self.origin0_dq_dual_formula)
+    #
+    # def get_origin1_dual(self):
+    #     return nsimplify(self.origin1_dq_dual_formula)
 
     #методы для получения аналитических формул с подставленными в них константными числовыми значениями
     #если угол поворота привода tetta не задан, то считается аналитическая формула, если задан - то он сразу подставляется в формулу
-    def get_analytical_dq(self, Tetta=None):
-        real=self.get_origin1_real().subs([(f'A{self.N}',np.radians(self.alfa)),
-                                           (f'Q_const{self.N}',np.radians(self.Tetta_const)),
-                                           (f'd{self.N}',self.d),
-                                           (f'a{self.N}',self.a)])
-        dual = self.get_origin1_dual().subs([(f'A{self.N}', np.radians(self.alfa)),
-                                             (f'Q_const{self.N}', np.radians(self.Tetta_const)),
-                                             (f'd{self.N}', self.d),
-                                             (f'a{self.N}', self.a)])
-        self.formula={}
-        self.formula['real']=real
-        self.formula['dual'] = dual
-        self.analytical_dq=DQ(Qreal_=self.formula['real'], Qdual_=self.formula['dual'])
-        if not(Tetta is None):
-            real=real.subs([(f'Q{self.N}',np.radians(Tetta))])
-            dual = dual.subs([(f'Q{self.N}', np.radians(Tetta))])
-            Q_real = Q(w=float(real.a), x=float(real.b), y=float(real.c), z=float(real.d))
-            Q_dual = Q(w=float(dual.a), x=float(dual.b), y=float(dual.c), z=float(dual.d))
-            self.analytical_dq = DQ(Qreal=Q_real, Qdual=Q_dual)
+    # def get_analytical_dq(self, Tetta=None):
+    #     real=self.get_origin1_real().subs([(f'A{self.N}',np.radians(self.alfa)),
+    #                                        (f'Q_const{self.N}',np.radians(self.Tetta_const)),
+    #                                        (f'd{self.N}',self.d),
+    #                                        (f'a{self.N}',self.a)])
+    #     dual = self.get_origin1_dual().subs([(f'A{self.N}', np.radians(self.alfa)),
+    #                                          (f'Q_const{self.N}', np.radians(self.Tetta_const)),
+    #                                          (f'd{self.N}', self.d),
+    #                                          (f'a{self.N}', self.a)])
+    #     self.formula={}
+    #     self.formula['real']=real
+    #     self.formula['dual'] = dual
+    #     self.analytical_dq=DQ(Qreal_=self.formula['real'], Qdual_=self.formula['dual'])
+    #     if not(Tetta is None):
+    #         real=real.subs([(f'Q{self.N}',np.radians(Tetta))])
+    #         dual = dual.subs([(f'Q{self.N}', np.radians(Tetta))])
+    #         Q_real = Q(w=float(real.a), x=float(real.b), y=float(real.c), z=float(real.d))
+    #         Q_dual = Q(w=float(dual.a), x=float(dual.b), y=float(dual.c), z=float(dual.d))
+    #         self.analytical_dq = DQ(Qreal=Q_real, Qdual=Q_dual)
+    #
+    #     return self.analytical_dq
 
-        return self.analytical_dq
-
-    def get_matrix(self,smplfy=True):
-        if smplfy:
-            return nsimplify(simplify(self.analytical_dq.dq_to_matrix_()),tolerance=1e-10)
-        else:
-            return self.analytical_dq.dq_to_matrix_()
+    # def get_matrix(self,smplfy=True):
+    #     if smplfy:
+    #         return nsimplify(simplify(self.analytical_dq.dq_to_matrix_()),tolerance=1e-10)
+    #     else:
+    #         return self.analytical_dq.dq_to_matrix_()
