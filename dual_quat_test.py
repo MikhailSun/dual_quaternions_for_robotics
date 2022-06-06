@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from sympy import Quaternion as spQ
-from sympy import symbols,sin,cos,sqrt,nan,simplify,nsimplify
+from sympy import symbols,sin,cos,sqrt,nan,simplify,nsimplify,Derivative,diff,expand,conjugate,Matrix
 
 fig = plt.figure(dpi=150)
 ax = fig.add_subplot(111, projection='3d')
@@ -95,7 +95,10 @@ class Q():
 
     @staticmethod
     def q_conjugate(q):
-        x, y, z, w = q.x, q.y, q.z, q.w
+        if isinstance(q,spQ):
+            x, y, z, w = q.b, q.c, q.d, q.a
+        else:
+            x, y, z, w = q.x, q.y, q.z, q.w
         return Q(w=w, x=-x, y=-y, z=-z)
 
     @staticmethod
@@ -111,7 +114,7 @@ class Q():
     def q_norm(self):
         v = (self.w, self.x, self.y, self.z)
         # test = np.sqrt(self.w ** 2 + self.x ** 2 + self.y ** 2 + self.z ** 2)
-        return np.sqrt(sum(x * x for x in v))
+        return np.sqrt(sum(float(x * x) for x in v))
 
     @staticmethod
     def q_inverse(q):
@@ -184,6 +187,19 @@ class DQ():
         self.m_real_=Qreal_.normalize()
         self.m_dual_=Qdual_
 
+    def __repr__(self):
+        to_print='Cyfral:\n'
+        to_print+= f'real:\n'
+        to_print+=self.m_real.__repr__() + '\n'
+        to_print+= f'dual:\n'
+        to_print+=self.m_dual.__repr__() + '\n'
+        to_print+='Analytical\n'
+        to_print+= f'real:\n'
+        to_print+=str(self.m_real_)+ '\n'
+        to_print+= f'dual:\n'
+        to_print+= str(self.m_dual_) + '\n'
+        return to_print
+
     def copy_from_dq(self,dq):
         self.m_real=dq.m_real
         self.m_dual = dq.m_dual
@@ -198,7 +214,7 @@ class DQ():
         self.m_dual = Q.qs_mult(Q.q_mult(q, self.m_real), 0.5)
 
         self.m_real_ = Qreal_.normalize()
-        q_ = spQ(a=0., b=V3[0], c=V3[1], d=V3[2])
+        q_ = spQ(a=0., b=V3_[0], c=V3_[1], d=V3_[2])
         self.m_dual_ =q_.mul(self.m_real_).mul(0.5)
 
     def make_dual_quat_from_coord_axis_angle(self, xyz=(0., 0., 0.), axis_xyz=(1., 0., 0.), angle_dgr=0., xyz_=(0., 0., 0.), axis_xyz_=(1., 0., 0.), angle_dgr_=0):
@@ -236,6 +252,16 @@ class DQ():
         # print(f'TEST dq_mult: a.m_real={Q.m_real}, b.m_real={P.m_real}')
         return DQ(Qreal=Q.q_mult(Pr,Qr), Qdual=Q.q_sum(Q.q_mult(Pr, Qd), Q.q_mult(Pd, Qr)))
 
+    @staticmethod
+    def dq_mult_(dq1, dq2):
+        # формула: qr1*qr2+(qr1*qd2+qd1*qr2)*eps
+        Qr = dq2.m_real_
+        Pr = dq1.m_real_
+        Qd = dq2.m_dual_
+        Pd = dq1.m_dual_
+        # print(f'TEST dq_mult: a.m_real={Q.m_real}, b.m_real={P.m_real}')
+        return DQ(Qreal_=Pr.mul(Qr), Qdual_=Pr.mul(Qd).add(Pd.mul(Qr)))
+
     def post_mult_by_dq(self,dq):
         Pr = self.m_real
         Pd = self.m_dual
@@ -260,6 +286,10 @@ class DQ():
     def dq_conjugate(dq):
         return DQ(Qreal=Q.q_conjugate(dq.m_real), Qdual=Q.q_conjugate(dq.m_dual))
 
+    @staticmethod
+    def dq_conjugate_(dq_):
+        return DQ(Qreal_=spQ.conjugate(dq_.m_real_), Qdual_=spQ.conjugate(dq_.m_dual_))
+
     def dq_norm(self):
         # полная формула нормы дуального кватерниона какая-то непонятная, везде пишут, что вроде бы формула ниже - это для единичного дуального кватерниона
         # ?! откуда эта формула? норма(m_real)+eps*((m_real*m_dual)/норма(m_real)) = m_real*m_real_conj + eps((m_real*m_dual)/(m_real*m_real_conj))
@@ -268,6 +298,15 @@ class DQ():
         dq1 = self
         dq2 = DQ.dq_conjugate(self)
         return DQ.dq_mult(dq1, dq2)
+
+    def dq_norm_(self):
+        # полная формула нормы дуального кватерниона какая-то непонятная, везде пишут, что вроде бы формула ниже - это для единичного дуального кватерниона
+        # ?! откуда эта формула? норма(m_real)+eps*((m_real*m_dual)/норма(m_real)) = m_real*m_real_conj + eps((m_real*m_dual)/(m_real*m_real_conj))
+        # или подругому: norm(DQ)=DQ*conj(DQ)=(DQreal+eps*DQdual)*(DQreal_conj+eps*DQdual_conj)=DQreal*DQreal_conj+eps*DQdual*DQreal_conj+DQreal*eps*DQdual_conj+eps*DQdual*eps*DQdual_conj =
+        # DQreal*DQreal_conj + eps*(DQdual*DQreal_conj+DQreal*DQdual_conj). Total: norm(DQ) = (DQreal*DQreal_conj; DQdual*DQreal_conj+DQreal*DQdual_conj)
+        dq1_ = self
+        dq2_ = DQ.dq_conjugate_(self)
+        return DQ.dq_mult_(dq1_, dq2_)
 
     # public static DualQuaternion_c Normalize(DualQuaternion_c q)
     # {
@@ -284,6 +323,13 @@ class DQ():
         # print(f'NEED to check: n must be scalar n.real={n.m_real} n.dual={n.m_dual}')
         self.m_real = Q.qs_mult(self.m_real, 1 / n)
         self.m_dual = Q.qs_mult(self.m_dual, 1 / n)
+
+    def normalize_(self):
+        # q*q_conj
+        n = self.dq_norm_().m_real_.norm()
+        # print(f'NEED to check: n must be scalar n.real={n.m_real} n.dual={n.m_dual}')
+        self.m_real_ = self.m_real_.mul(1 / n)
+        self.m_dual_ = self.m_dual_.mul(1 / n)
 
     @staticmethod
     def dq_sum(dq1, dq2):
@@ -306,32 +352,6 @@ class DQ():
         x = self.m_real.x
         y = self.m_real.y
         z = self.m_real.z
-
-        # M.M11 = w * w + x * x - y * y - z * z;
-        # M.M12 = 2 * x * y + 2 * w * z;
-        # M.M13 = 2 * x * z - 2 * w * y;
-        # M.M21 = 2 * x * y - 2 * w * z;
-        # M.M22 = w * w + y * y - x * x - z * z;
-        # M.M23 = 2 * y * z + 2 * w * x;
-        # M.M31 = 2 * x * z + 2 * w * y;
-        # M.M32 = 2 * y * z - 2 * w * x;
-        # M.M33 = w * w + z * z - x * x - y * y;
-        # // Extract translation information Quaternion
-        # t = (q.m_dual * 2.0f) * Quaternion.Conjugate(q.m_real);
-        # M.M41 = t.X;
-        # M.M42 = t.Y;
-        # M.M43 = t.Z;
-
-        # M[0][0] = w * w + x * x - y * y - z * z
-        # M[0][1] = 2 * x * y + 2 * w * z
-        # M[0][2] = 2 * x * z - 2 * w * y
-        # M[1][0] = 2 * x * y - 2 * w * z
-        # M[1][1] = w * w + y * y - x * x - z * z
-        # M[1][2] = 2 * y * z + 2 * w * x
-        # M[2][0] = 2 * x * z + 2 * w * y
-        # M[2][1] = 2 * y * z - 2 * w * x
-        # M[2][2] = w * w + z * z - x * x - y * y
-
         #из книги Modern Robotics, Lynch and Park, Cambridge U. Press, 2017., стр581
         M[0][0]=w*w+x*x-y*y-z*z
         M[1][0]=2*(w*z+x*y)
@@ -347,6 +367,35 @@ class DQ():
         M[0][3] = t.x
         M[1][3] = t.y
         M[2][3] = t.z
+        return M
+
+    def dq_to_matrix_(self):
+        self.normalize_()
+        M = Matrix([[1., 0., 0., 0.],
+             [0., 1., 0., 0.],
+             [0., 0., 1., 0.],
+             [0., 0., 0., 1.]])
+        w = self.m_real_.a
+        x = self.m_real_.b
+        y = self.m_real_.c
+        z = self.m_real_.d
+        #из книги Modern Robotics, Lynch and Park, Cambridge U. Press, 2017., стр581
+        M[0,0]=w*w+x*x-y*y-z*z
+        M[1,0]=2*(w*z+x*y)
+        M[2,0]=2*(x*z-w*y)
+        M[0,1]=2*(x*y-w*z)
+        M[1,1]=w*w-x*x+y*y-z*z
+        M[2,1]=2*(w*x+y*z)
+        M[0,2]=2*(w*y+x*z)
+        M[1,2]=2*(y*z-w*x)
+        M[2,2]=w*w-x*x-y*y+z*z
+        test=self.m_real_.to_rotation_matrix()
+
+        t=self.m_dual_.mul(2.).mul(spQ.conjugate(self.m_real_))
+        # t = Q.q_mult(Q.qs_mult(self.m_dual, 2.), Q.q_conjugate(self.m_real))
+        M[0,3] = t.b
+        M[1,3] = t.c
+        M[2,3] = t.d
         return M
 
     def dq_to_coordinates(self):
@@ -470,17 +519,18 @@ class frame():
 class link():
     number_of_link=0
     def __init__(self, DH_dict, origin_quat=None):
-
+        link.number_of_link+=1
+        self.N=str(link.number_of_link)
         # параметры ДХ
         self.Tetta_const = DH_dict['Tetta']
         self.d = DH_dict['d']
         self.a = DH_dict['a']
         self.alfa = DH_dict['alfa']  # NB! этот угол применяется только для поворота СК на конце текущего линка, но он не применяется для вычисления координат текущего линка - это вытекает из условий ДХ
 
-        self.Tetta_const_ = symbols('Tetta_const')
-        self.d_ = symbols('d')
-        self.a_ = symbols('a')
-        self.alfa_ = symbols('alfa')
+        self.Tetta_const_ = symbols(f'Q_const{self.N}')
+        self.d_ = symbols(f'd{self.N}')
+        self.a_ = symbols(f'a{self.N}')
+        self.alfa_ = symbols(f'A{self.N}')
 
         #СК начала и конца линка
         if origin_quat is None:
@@ -489,8 +539,7 @@ class link():
             self.origin0 = origin_quat
         self.origin1=DQ()
 
-        link.number_of_link+=1
-        self.N=str(link.number_of_link)
+
 
     #всегда в соответсвтие с ДХ подразумеваем, что вращение происходит относительно оси Z
     def transform(self, Tetta):
@@ -500,7 +549,7 @@ class link():
         # 1)вычисляем СК для начальной точки линка
         dq = DQ()
         sp_Tetta=symbols(f'Q{self.N}')
-        dq.make_rotation(axis_xyz=[0.,0.,1.], angle_dgr=float(Tetta) + self.Tetta_const, axis_xyz_=[0.,0.,1.], angle_dgr_=sp_Tetta) #из ДХ - вращаем относительно исходной оси z
+        dq.make_rotation(axis_xyz=[0.,0.,1.], angle_dgr=float(Tetta) + self.Tetta_const, axis_xyz_=[0.,0.,1.], angle_dgr_=self.Tetta_const_+sp_Tetta) #из ДХ - вращаем относительно исходной оси z
         # self.origin0=DQ.dq_mult(self.origin0,dq)
         self.origin0.post_mult_by_dq(dq)
         #вспомогательные штуки для визуализации
@@ -521,7 +570,7 @@ class link():
         # по ДХ - вращаем относительно оси x текущей системы координат на угол alfa
         dq_rot = DQ()
         sp_Alfa = symbols(f'A{self.N}')
-        dq_rot.make_rotation(axis_xyz=[1.,0.,0.], angle_dgr=self.alfa, axis_xyz_=[1.,0.,0.], angle_dgr_=sp_Alfa) #из ДХ - вращаем относительно новой оси x
+        dq_rot.make_rotation(axis_xyz=[1.,0.,0.], angle_dgr=self.alfa, axis_xyz_=[1.,0.,0.], angle_dgr_=self.alfa_) #из ДХ - вращаем относительно новой оси x
         # self.origin1 = DQ.dq_mult(dq,dq_rot)
         self.origin1.post_mult_by_dq(dq_rot)
         # self.origin1.m_real_=simplify(self.origin1.m_real_)
@@ -538,3 +587,46 @@ class link():
         self.origin1_dq_real_formula=self.origin1.m_real_
         self.origin1_dq_dual_formula = self.origin1.m_dual_
         print(f'Link {self.N} completed')
+
+    #методы для получения полностью аналитических формул
+    def get_origin0_real(self):
+        return nsimplify(self.origin0_dq_real_formula)
+
+    def get_origin1_real(self):
+        return nsimplify(self.origin1_dq_real_formula)
+
+    def get_origin0_dual(self):
+        return nsimplify(self.origin0_dq_dual_formula)
+
+    def get_origin1_dual(self):
+        return nsimplify(self.origin1_dq_dual_formula)
+
+    #методы для получения аналитических формул с подставленными в них константными числовыми значениями
+    #если угол поворота привода tetta не задан, то считается аналитическая формула, если задан - то он сразу подставляется в формулу
+    def get_analytical_dq(self, Tetta=None):
+        real=self.get_origin1_real().subs([(f'A{self.N}',np.radians(self.alfa)),
+                                           (f'Q_const{self.N}',np.radians(self.Tetta_const)),
+                                           (f'd{self.N}',self.d),
+                                           (f'a{self.N}',self.a)])
+        dual = self.get_origin1_dual().subs([(f'A{self.N}', np.radians(self.alfa)),
+                                             (f'Q_const{self.N}', np.radians(self.Tetta_const)),
+                                             (f'd{self.N}', self.d),
+                                             (f'a{self.N}', self.a)])
+        self.formula={}
+        self.formula['real']=real
+        self.formula['dual'] = dual
+        self.analytical_dq=DQ(Qreal_=self.formula['real'], Qdual_=self.formula['dual'])
+        if not(Tetta is None):
+            real=real.subs([(f'Q{self.N}',np.radians(Tetta))])
+            dual = dual.subs([(f'Q{self.N}', np.radians(Tetta))])
+            Q_real = Q(w=float(real.a), x=float(real.b), y=float(real.c), z=float(real.d))
+            Q_dual = Q(w=float(dual.a), x=float(dual.b), y=float(dual.c), z=float(dual.d))
+            self.analytical_dq = DQ(Qreal=Q_real, Qdual=Q_dual)
+
+        return self.analytical_dq
+
+    def get_matrix(self,smplfy=True):
+        if smplfy:
+            return nsimplify(simplify(self.analytical_dq.dq_to_matrix_()),tolerance=1e-10)
+        else:
+            return self.analytical_dq.dq_to_matrix_()
