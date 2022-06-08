@@ -41,7 +41,7 @@ class Q():
         str2 = f'   norm={self.q_norm()}'
         return str1 + str2
 
-    def make_quat_from_angle_and_axis(self, angle, axis, angle_, axis_):
+    def make_quat_from_angle_and_axis(self, angle=0, axis=(0.,0.,0.), angle_=0., axis_=(0.,0.,0.)):
         # c1 = 0.0000000001 if np.sin(np.radians(angle) / 2) == 0 else np.sin(np.radians(angle) / 2)
         c1=np.sin(np.radians(angle) / 2)
         self.w = np.cos(np.radians(angle) / 2)
@@ -605,7 +605,12 @@ class link():
         self.frame1_dq=copy.deepcopy(self.origin1)
 
         #из полученных frame0_dq и frame1_dq нужно извлечь координаты x y z rx ry rz
-        как перевести данные из кватерниона в rx ry rz
+        #попробуем решить так: попробуем решить так - умножим аналитически 3 кватерниона опследовательных поворотов относительно исходной СК X Y Z - это будем называть углами Эйлера (или самолетным )
+        #1) расчет аналитического кватерниона на основе угла и оси
+        #2) аналитическое умножение кватернионов
+        #3) вывод из получившегося результата углв Эйлера
+
+        # как перевести данные из кватерниона в rx ry rz
 
         print(f'Link {self.N} completed')
 
@@ -651,3 +656,6 @@ class link():
     #         return nsimplify(simplify(self.analytical_dq.dq_to_matrix_()),tolerance=1e-10)
     #     else:
     #         return self.analytical_dq.dq_to_matrix_()
+
+
+
