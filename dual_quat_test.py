@@ -166,6 +166,33 @@ class Q():
                 [X_rot[1], Y_rot[1], Z_rot[1]],
                 [X_rot[2], Y_rot[2], Z_rot[2]]]
 
+    # https://stackoverflow.com/questions/5782658/extracting-yaw-from-a-quaternion#:~:text=Having%20given%20a%20Quaternion%20q,*q.y%20%2D%20q.z*q.z)%3B
+    # var yaw = atan2(2.0*(q.y*q.z + q.w*q.x), q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z);
+    # var pitch = asin(-2.0*(q.x*q.z - q.w*q.y));
+    # var roll = atan2(2.0*(q.x*q.y + q.w*q.z), q.w*q.w + q.x*q.x - q.y*q.y - q.z*q.z);
+    def get_rxryrz(self):
+        # This should fit for intrinsic tait - bryan rotation of xyz-order.For other rotation orders, extrinsic and proper-euler rotations other conversions have to be used.
+        yaw = np.arctan2(2.0*(self.y*self.z + self.w*self.x), self.w*self.w - self.x*self.x - self.y*self.y + self.z*self.z)
+        pitch = np.arcsin(-2.0*(self.x*self.z - self.w*self.y))
+        roll = np.arctan2(2.0*(self.x*self.y + self.w*self.z), self.w*self.w + self.x*self.x - self.y*self.y - self.z*self.z)
+        print(f'rx={np.degrees(yaw)} ry={np.degrees(pitch)} rz={np.degrees(roll)}')
+
+        # I've verified below code against Wikipedia's equations plus Pixhawk's documentation and it is correct.
+        # If you are working with drones/aviation, below is the code (taken directly from DJI SDK). Here q0, q1, q2, q3 corresponds to w,x,y,z components of the quaternion respectively. Also note that yaw, pitch, roll may be referred to as heading, attitude and bank respectively in some literature.
+        roll = np.arctan2(2.0 * (self.z * self.y + self.w * self.x), 1.0 - 2.0 * (self.x * self.x + self.y * self.y))
+        pitch = np.arcsin(2.0 * (self.y * self.w - self.z * self.x))
+        yaw = np.arctan2(2.0 * (self.z * self.w + self.x * self.y), - 1.0 + 2.0 * (self.w * self.w + self.x * self.x))
+        print(f'rx={np.degrees(yaw)} ry={np.degrees(pitch)} rz={np.degrees(roll)}')
+
+        #Yaw, Pitch, Roll is the same as Heading, Pitch, Bank.
+        yaw = np.arctan2(2 * self.y * self.w - 2 * self.x * self.z, 1 - 2 * self.y*self.y - 2 * self.z*self.z)
+        pitch = np.arcsin(2 * self.x * self.y + 2 * self.z * self.w)
+        roll = np.arctan2(2 * self.x * self.w - 2 * self.y * self.z, 1 - 2 * self.x*self.x - 2 * self.z*self.z)
+
+        # print(f'yaw={np.degrees(yaw)} pitch={np.degrees(pitch)} roll={np.degrees(roll)}')
+        print(f'rx={np.degrees(yaw)} ry={np.degrees(pitch)} rz={np.degrees(roll)}')
+        return np.degrees(yaw), np.degrees(pitch), np.degrees(roll)
+
 
 class DQ():
     number_of_DQ=0
@@ -202,8 +229,10 @@ class DQ():
         return to_print
 
     def simplify(self):
-        self.m_real_=nsimplify(simplify(self.m_real_), tolerance=1e-10)
-        self.m_dual_ = nsimplify(simplify(self.m_dual_), tolerance=1e-10)
+        # self.m_real_=nsimplify(simplify(self.m_real_), tolerance=1e-10)
+        # self.m_dual_ = nsimplify(simplify(self.m_dual_), tolerance=1e-10)
+        self.m_real_=nsimplify(self.m_real_, tolerance=1e-10)
+        self.m_dual_ = nsimplify(self.m_dual_, tolerance=1e-10)
 
     def insert_numbers(self,list_of_tuples_of_numbers):
         self.m_real_=self.m_real_.subs(list_of_tuples_of_numbers)
@@ -588,15 +617,15 @@ class link():
         plt.plot(line_X,line_Y,line_Z,lw=2,c='black')
 
         #подставляем в формулу параметры ДХ
-        self.origin0.insert_numbers([(f'A{self.N}',np.radians(self.alfa)),
-                                        (f'Q_const{self.N}',np.radians(self.Tetta_const)),
-                                        (f'd{self.N}',self.d),
-                                        (f'a{self.N}',self.a),])
+        # self.origin0.insert_numbers([(f'A{self.N}',np.radians(self.alfa)),
+        #                                 (f'Q_const{self.N}',np.radians(self.Tetta_const)),
+        #                                 (f'd{self.N}',self.d),
+        #                                 (f'a{self.N}',self.a),])
                                         # (f'Q{self.N}',np.radians(Tetta))])
-        self.origin1.insert_numbers([(f'A{self.N}',np.radians(self.alfa)),
-                                        (f'Q_const{self.N}',np.radians(self.Tetta_const)),
-                                        (f'd{self.N}',self.d),
-                                        (f'a{self.N}',self.a),])
+        # self.origin1.insert_numbers([(f'A{self.N}',np.radians(self.alfa)),
+        #                                 (f'Q_const{self.N}',np.radians(self.Tetta_const)),
+        #                                 (f'd{self.N}',self.d),
+        #                                 (f'a{self.N}',self.a),])
                                         # (f'Q{self.N}',np.radians(Tetta))])
         #упрощаем формулу до читабельного вида и сохраняем ее копию в объекты frame0_dq (СК начала звена) и в frame1_dq (конец звена)
         self.origin0.simplify()

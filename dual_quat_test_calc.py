@@ -5,14 +5,14 @@ from dual_quat_test import DQ,link,frame
 import matplotlib.pyplot as plt
 from sympy import simplify, nsimplify, Derivative, diff,expand,sin,cos,Quaternion,symbols,solve
 
-DH=dict(l1=dict(Tetta=0,d=0.507,a=0.265,alfa=90),)
-        # l2=dict(Tetta=90,d=0,a=0.7,alfa=0),)
-        # l3=dict(Tetta=0,d=0,a=0.02,alfa=90),
-        # l4=dict(Tetta=0,d=0.759,a=0,alfa=90),
-        # l5=dict(Tetta=0,d=0,a=0,alfa=-90),
-        # l6=dict(Tetta=180,d=0.143,a=0,alfa=0),)
+DH=dict(l1=dict(Tetta=0,d=0.507,a=0.265,alfa=90),
+        l2=dict(Tetta=90,d=0,a=0.7,alfa=0),
+        l3=dict(Tetta=0,d=0,a=0.02,alfa=90),
+        l4=dict(Tetta=0,d=0.759,a=0,alfa=90),
+        l5=dict(Tetta=0,d=0,a=0,alfa=-90),
+        l6=dict(Tetta=180,d=0.143,a=0,alfa=0))
 
-angles=list([10,-10,10,90,90,10])
+angles=list([0,5,0,00,00,0])
 
 links=[]
 for link_name,DH_par in DH.items():
@@ -25,6 +25,10 @@ for link_name,DH_par in DH.items():
 
 for a,l in zip(angles,links):
     l.transform(a)
+    l.origin1.dq_to_frame().show(lw=3)
+    l.origin1.m_real.get_rxryrz()
+
+# links[-1].origin1.m_real.get_rxryrz()
 
 #1) численное решение:
 # cyfral=links[0].origin1.dq_to_matrix()
@@ -69,8 +73,11 @@ eq3=q3-QE.d #q3 - sin(rx/2)*sin(ry/2)*cos(rz/2) - sin(rz/2)*cos(rx/2)*cos(ry/2) 
 #из (2) sin(rx/2)*cos(ry/2)=(q1 - sin(ry/2)*sin(rz/2)*cos(rx/2))/cos(rz/2)
 #из (3) sin(rx/2)*cos(ry/2)=(-q2 + sin(ry/2)*cos(rx/2)*cos(rz/2))/sin(rz/2)
 #приравниваем eq5=(q1 - sin(ry/2)*sin(rz/2)*cos(rx/2))/cos(rz/2)-(-q2 + sin(ry/2)*cos(rx/2)*cos(rz/2))/sin(rz/2)
-((q1*sin(rz/2) - sin(ry/2)*sin(rz/2)**2*cos(rx/2))-(-q2*cos(rz/2) + sin(ry/2)*cos(rx/2)*cos(rz/2)**2))/(cos(rz/2)*sin(rz/2))
-(q1*sin(rz/2) +q2*cos(rz/2) - sin(ry/2)*sin(rz/2)**2*cos(rx/2)-sin(ry/2)*cos(rx/2)*cos(rz/2)**2)/(cos(rz/2)*sin(rz/2))
-(q1*sin(rz/2) +q2*cos(rz/2) - sin(ry/2)*cos(rx/2)*(sin(rz/2)**2)+cos(rz/2)**2)/(cos(rz/2)*sin(rz/2))
-(q1*sin(rz/2) +q2*cos(rz/2) - sin(ry/2)*cos(rx/2))/(cos(rz/2)*sin(rz/2))
-#упрощаем: (2*q1*sin(rz/2) + 2*q2*cos(rz/2) + sin(rx/2 - ry/2) - sin(rx/2 + ry/2))/sin(rz)
+# ((q1*sin(rz/2) - sin(ry/2)*sin(rz/2)**2*cos(rx/2))-(-q2*cos(rz/2) + sin(ry/2)*cos(rx/2)*cos(rz/2)**2))/(cos(rz/2)*sin(rz/2))
+# (q1*sin(rz/2) +q2*cos(rz/2) - sin(ry/2)*sin(rz/2)**2*cos(rx/2)-sin(ry/2)*cos(rx/2)*cos(rz/2)**2)/(cos(rz/2)*sin(rz/2))
+# (q1*sin(rz/2) +q2*cos(rz/2) - sin(ry/2)*cos(rx/2)*(sin(rz/2)**2)+cos(rz/2)**2)/(cos(rz/2)*sin(rz/2))
+#упрощаем:(q1*sin(rz/2) +q2*cos(rz/2) - sin(ry/2)*cos(rx/2))/(cos(rz/2)*sin(rz/2))
+#приравниваем eq4==eq5: (-q0*cos(rz/2) - q3*sin(rz/2) + cos(rx/2)*cos(ry/2))/(sin(rz/2)*cos(rz/2)) == (q1*sin(rz/2) +q2*cos(rz/2) - sin(ry/2)*cos(rx/2))/(cos(rz/2)*sin(rz/2))
+# (-q0*cos(rz/2) - q3*sin(rz/2) + cos(rx/2)*cos(ry/2)) == (q1*sin(rz/2) +q2*cos(rz/2) - sin(ry/2)*cos(rx/2))
+
+
