@@ -64,12 +64,12 @@ y = (0.85 * sp.cos(A2) + 0.85 * sp.cos(A3) + 0.36) * sp.sin(A1)
 # z=0.85*sin(A3) + 0.85*cos(A2) + 0.317
 z = -0.85 * sp.sin(A2) - 0.85 * sp.sin(A3) + 0.317
 
-Vx=(-0.85*sin(A2)*V_A2 - 0.85*sin(A3)*V_A3)*cos(A1) - (0.85*cos(A2) + 0.85*cos(A3) + 0.36)*sin(A1)*V_A1
-ax=-(sin(A1)*a_A1 + cos(A1)*V_A1**2)*(0.85*cos(A2) + 0.85*cos(A3) + 0.36) + 1.7*(sin(A2)*V_A2 + sin(A3)*V_A3)*sin(A1)*V_A1 - 0.85*(sin(A2)*a_A2 + sin(A3)*a_A3 + cos(A2)*V_A2**2 + cos(A3)*V_A3**2)*cos(A1)
-Vy=(-0.85*sin(A2)*V_A2 - 0.85*sin(A3)*V_A3)*sin(A1) + (0.85*cos(A2) + 0.85*cos(A3) + 0.36)*cos(A1)*V_A1
-ay=-((sin(A1)*V_A1**2 - cos(A1)*a_A1)*(0.85*cos(A2) + 0.85*cos(A3) + 0.36) + 1.7*(sin(A2)*V_A2 + sin(A3)*V_A3)*cos(A1)*V_A1 + 0.85*(sin(A2)*a_A2 + sin(A3)*a_A3 + cos(A2)*V_A2**2 + cos(A3)*V_A3**2)*sin(A1))
-Vz=-0.85*cos(A2)*V_A2 - 0.85*cos(A3)*V_A3
-az=0.85*(sin(A2)*V_A2**2 + sin(A3)*V_A3**2 - cos(A2)*a_A2 - cos(A3)*a_A3)
+# Vx=(-0.85*sin(A2)*V_A2 - 0.85*sin(A3)*V_A3)*cos(A1) - (0.85*cos(A2) + 0.85*cos(A3) + 0.36)*sin(A1)*V_A1
+# ax=-(sin(A1)*a_A1 + cos(A1)*V_A1**2)*(0.85*cos(A2) + 0.85*cos(A3) + 0.36) + 1.7*(sin(A2)*V_A2 + sin(A3)*V_A3)*sin(A1)*V_A1 - 0.85*(sin(A2)*a_A2 + sin(A3)*a_A3 + cos(A2)*V_A2**2 + cos(A3)*V_A3**2)*cos(A1)
+# Vy=(-0.85*sin(A2)*V_A2 - 0.85*sin(A3)*V_A3)*sin(A1) + (0.85*cos(A2) + 0.85*cos(A3) + 0.36)*cos(A1)*V_A1
+# ay=-((sin(A1)*V_A1**2 - cos(A1)*a_A1)*(0.85*cos(A2) + 0.85*cos(A3) + 0.36) + 1.7*(sin(A2)*V_A2 + sin(A3)*V_A3)*cos(A1)*V_A1 + 0.85*(sin(A2)*a_A2 + sin(A3)*a_A3 + cos(A2)*V_A2**2 + cos(A3)*V_A3**2)*sin(A1))
+# Vz=-0.85*cos(A2)*V_A2 - 0.85*cos(A3)*V_A3
+# az=0.85*(sin(A2)*V_A2**2 + sin(A3)*V_A3**2 - cos(A2)*a_A2 - cos(A3)*a_A3)
 
 
 #V_A1=x*Vy/(x*az**2 + y*az**2) - y*az*Vx/(x*az**2 + y*az**2)

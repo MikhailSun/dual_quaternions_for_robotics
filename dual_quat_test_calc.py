@@ -5,14 +5,15 @@ from dual_quat_test import DQ,link,frame
 import matplotlib.pyplot as plt
 from sympy import simplify, nsimplify, Derivative, diff,expand,sin,cos,Quaternion,symbols,solve
 
-DH=dict(l1=dict(Tetta=0,d=0.507,a=0.265,alfa=90),
-        l2=dict(Tetta=90,d=0,a=0.7,alfa=0),
-        l3=dict(Tetta=0,d=0,a=0.02,alfa=90),
-        l4=dict(Tetta=0,d=0.759,a=0,alfa=90),
-        l5=dict(Tetta=0,d=0,a=0,alfa=-90),
-        l6=dict(Tetta=180,d=0.143,a=0,alfa=0))
+DH=dict(l1=dict(Tetta=0,d=0.507,a=0.265,alfa=90),)
+        # l2=dict(Tetta=90,d=0,a=0.7,alfa=0),)
+        # l3=dict(Tetta=0,d=0,a=0.02,alfa=90),
+        # l4=dict(Tetta=0,d=0.759,a=0,alfa=90),
+        # l5=dict(Tetta=0,d=0,a=0,alfa=-90),
+        # l6=dict(Tetta=180,d=0.143,a=0,alfa=0))
 
 angles=list([0,5,0,00,00,0])
+velocities=list([1.,1.,1.,1.,1.,1.])
 
 links=[]
 for link_name,DH_par in DH.items():
@@ -23,8 +24,8 @@ for link_name,DH_par in DH.items():
     l=link(DH_par,origin_quat=origin_dq)
     links.append(l)
 
-for a,l in zip(angles,links):
-    l.transform(a)
+for a,v,l in zip(angles,velocities,links):
+    l.transform(Tetta=a,V_Tetta=0.5)
     l.origin1.dq_to_frame().show(lw=3)
     l.origin1.m_real.get_rxryrz()
 

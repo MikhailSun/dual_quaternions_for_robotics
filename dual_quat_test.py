@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from sympy import Quaternion as spQ
-from sympy import symbols,sin,cos,sqrt,nan,simplify,nsimplify,Derivative,diff,expand,conjugate,Matrix
+from sympy import symbols,sin,cos,sqrt,nan,simplify,nsimplify,Derivative,diff,expand,conjugate,Matrix,Function
 import copy
 
 fig = plt.figure(dpi=150)
@@ -17,6 +17,7 @@ ax.set_ylabel('Y')
 ax.set_zlabel('Z')
 ax.set_box_aspect([1, 1, 1])
 # w_, x_, y_,z_=symbols("w_, x_, y_,z_")
+t=symbols('t')#переменная времени
 
 class Q():
     number_of_Q=0
@@ -193,6 +194,9 @@ class Q():
         print(f'rx={np.degrees(yaw)} ry={np.degrees(pitch)} rz={np.degrees(roll)}')
         return np.degrees(yaw), np.degrees(pitch), np.degrees(roll)
 
+    def diff_(self):
+        return self.Q_.diff()
+
 
 class DQ():
     number_of_DQ=0
@@ -231,8 +235,8 @@ class DQ():
     def simplify(self):
         # self.m_real_=nsimplify(simplify(self.m_real_), tolerance=1e-10)
         # self.m_dual_ = nsimplify(simplify(self.m_dual_), tolerance=1e-10)
-        self.m_real_=nsimplify(self.m_real_, tolerance=1e-10)
-        self.m_dual_ = nsimplify(self.m_dual_, tolerance=1e-10)
+        self.m_real_=nsimplify(self.m_real_,  rational=False)#tolerance=1e-10,
+        self.m_dual_ = nsimplify(self.m_dual_,  rational=False)#tolerance=1e-10,
 
     def insert_numbers(self,list_of_tuples_of_numbers):
         self.m_real_=self.m_real_.subs(list_of_tuples_of_numbers)
@@ -460,6 +464,9 @@ class DQ():
         z_axis = [M[0][2], M[1][2], M[2][2]]
         return frame(x_axis,y_axis,z_axis,(x,y,z))
 
+    def diff_(self):
+        return DQ(Qreal_=self.m_real_.diff(),Qdual_=self.m_dual_.diff())
+
     def check(self):
         M = self.dq_to_matrix()
         x = M[0][3]
@@ -576,17 +583,20 @@ class link():
         else:
             self.origin0 = origin_quat
         self.origin1=DQ()
+        self.origin1_velocity=DQ()
 
 
 
     #всегда в соответсвтие с ДХ подразумеваем, что вращение происходит относительно оси Z
-    def transform(self, Tetta):
+    def transform(self, Tetta, V_Tetta=0., A_Tetta=0.):
         #NB! правила порядка умножения бикватернионов хорошо расписаны в "Гордеев. Кватернионы и бикватернионы с приложениями в геометрии и механике", стр.156, п.4,7,4
-
+        Tetta=np.radians(Tetta)
+        V_Tetta=np.radians(V_Tetta)
         # считаем положение линка в соответсвтии с правилами ДХ:
         # 1)вычисляем СК для начальной точки линка
         dq = DQ()
-        sp_Tetta=symbols(f'Q{self.N}')
+        # sp_Tetta=symbols(f'Q{self.N}', cls=Function)
+        sp_Tetta=Function(f'Q{self.N}')(t)
         dq.make_rotation(axis_xyz=[0.,0.,1.], angle_dgr=float(Tetta) + self.Tetta_const, axis_xyz_=[0.,0.,1.], angle_dgr_=self.Tetta_const_+sp_Tetta) #из ДХ - вращаем относительно исходной оси z
         # self.origin0=DQ.dq_mult(self.origin0,dq)
         self.origin0.post_mult_by_dq(dq)
@@ -616,22 +626,30 @@ class link():
         line_Z = [frame0.base[2],frame1.base[2]]
         plt.plot(line_X,line_Y,line_Z,lw=2,c='black')
 
-        #подставляем в формулу параметры ДХ
-        # self.origin0.insert_numbers([(f'A{self.N}',np.radians(self.alfa)),
-        #                                 (f'Q_const{self.N}',np.radians(self.Tetta_const)),
-        #                                 (f'd{self.N}',self.d),
-        #                                 (f'a{self.N}',self.a),])
+        #подставляем в формулу параметры ДХ, но пока не подставляем переменные угол, угловую скорость и ускорение - т.о. получаем на выходе аналитиеские формулы для кватернионов
+        self.origin0.insert_numbers([(f'A{self.N}',np.radians(self.alfa)),
+                                        (f'Q_const{self.N}',np.radians(self.Tetta_const)),
+                                        (f'd{self.N}',self.d),
+                                        (f'a{self.N}',self.a),])
                                         # (f'Q{self.N}',np.radians(Tetta))])
-        # self.origin1.insert_numbers([(f'A{self.N}',np.radians(self.alfa)),
-        #                                 (f'Q_const{self.N}',np.radians(self.Tetta_const)),
-        #                                 (f'd{self.N}',self.d),
-        #                                 (f'a{self.N}',self.a),])
+        self.origin1.insert_numbers([(f'A{self.N}',np.radians(self.alfa)),
+                                        (f'Q_const{self.N}',np.radians(self.Tetta_const)),
+                                        (f'd{self.N}',self.d),
+                                        (f'a{self.N}',self.a),])
                                         # (f'Q{self.N}',np.radians(Tetta))])
         #упрощаем формулу до читабельного вида и сохраняем ее копию в объекты frame0_dq (СК начала звена) и в frame1_dq (конец звена)
-        self.origin0.simplify()
+        # self.origin0.simplify()
         self.frame0_dq=copy.deepcopy(self.origin0)
-        self.origin1.simplify()
+        # self.origin1.simplify()
+        self.origin1_velocity=self.origin1.diff_()
         self.frame1_dq=copy.deepcopy(self.origin1)
+        #подставляем в формулы численные значения углов и скоростей и ускорений
+        _coord=Function(f'Q{self.N}')(t)
+        self.origin1.insert_numbers([(_coord,Tetta)])
+        _vel=Derivative(Function(f'Q{self.N}')(t),t)
+        self.origin1_velocity.insert_numbers([(_vel, V_Tetta),(_coord,Tetta)])
+        if (abs(V_Tetta)<0.0000001):
+            self.origin1_velocity.m_real_=spQ(0.,0.,0.,0.,)
 
         #из полученных frame0_dq и frame1_dq нужно извлечь координаты x y z rx ry rz
         #попробуем решить так: попробуем решить так - умножим аналитически 3 кватерниона опследовательных поворотов относительно исходной СК X Y Z - это будем называть углами Эйлера (или самолетным )
