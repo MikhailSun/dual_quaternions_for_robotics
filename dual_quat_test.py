@@ -141,12 +141,14 @@ class Q():
             res.append(val / norm)
 
         #for sympy
-        norm_ = sqrt(sum(x * x for x in v_sp))
-        res_ = []
-        for val in v_sp:
-            res_.append(val / norm_)
-
-        return res,res_
+        if (not v_sp is None):
+            norm_ = sqrt(sum(x * x for x in v_sp))
+            res_ = []
+            for val in v_sp:
+                res_.append(val / norm_)
+            return res, res_
+        else:
+            return res
 
     def q_to_axisangle(self):
         v, w = [self.x, self.y, self.z], self.w
@@ -431,7 +433,7 @@ class DQ():
         M[0,2]=2*(w*y+x*z)
         M[1,2]=2*(y*z-w*x)
         M[2,2]=w*w-x*x-y*y+z*z
-        test=self.m_real_.to_rotation_matrix()
+        # test=self.m_real_.to_rotation_matrix()
 
         t=self.m_dual_.mul(2.).mul(spQ.conjugate(self.m_real_))
         # t = Q.q_mult(Q.qs_mult(self.m_dual, 2.), Q.q_conjugate(self.m_real))
@@ -464,6 +466,9 @@ class DQ():
         z_axis = [M[0][2], M[1][2], M[2][2]]
         return frame(x_axis,y_axis,z_axis,(x,y,z))
 
+    # def diff(self):
+    #     dq1=
+
     def diff_(self):
         return DQ(Qreal_=self.m_real_.diff(),Qdual_=self.m_dual_.diff())
 
@@ -476,7 +481,6 @@ class DQ():
         y_axis = [M[0][1], M[1][1], M[2][1]]
         z_axis = [M[0][2], M[1][2], M[2][2]]
         print(f'x={round(x,3)}, y={round(x,3)}, z={round(x,3)}')
-
 
     def print(self):
         M = self.dq_to_matrix()
@@ -590,7 +594,7 @@ class link():
     #всегда в соответсвтие с ДХ подразумеваем, что вращение происходит относительно оси Z
     def transform(self, Tetta, V_Tetta=0., A_Tetta=0.):
         #NB! правила порядка умножения бикватернионов хорошо расписаны в "Гордеев. Кватернионы и бикватернионы с приложениями в геометрии и механике", стр.156, п.4,7,4
-        Tetta=np.radians(Tetta)
+        # Tetta=np.radians(float(Tetta))
         V_Tetta=np.radians(V_Tetta)
         # считаем положение линка в соответсвтии с правилами ДХ:
         # 1)вычисляем СК для начальной точки линка
@@ -643,13 +647,16 @@ class link():
         # self.origin1.simplify()
         self.origin1_velocity=self.origin1.diff_()
         self.frame1_dq=copy.deepcopy(self.origin1)
+
+        self.frame1_dq.m_real.q_to_axisangle()
+
         #подставляем в формулы численные значения углов и скоростей и ускорений
         _coord=Function(f'Q{self.N}')(t)
         self.origin1.insert_numbers([(_coord,Tetta)])
         _vel=Derivative(Function(f'Q{self.N}')(t),t)
         self.origin1_velocity.insert_numbers([(_vel, V_Tetta),(_coord,Tetta)])
-        if (abs(V_Tetta)<0.0000001):
-            self.origin1_velocity.m_real_=spQ(0.,0.,0.,0.,)
+        # if (abs(V_Tetta)<0.0000001):
+        #     self.origin1_velocity.m_real_=spQ(0.,0.,0.,0.,)
 
         #из полученных frame0_dq и frame1_dq нужно извлечь координаты x y z rx ry rz
         #попробуем решить так: попробуем решить так - умножим аналитически 3 кватерниона опследовательных поворотов относительно исходной СК X Y Z - это будем называть углами Эйлера (или самолетным )

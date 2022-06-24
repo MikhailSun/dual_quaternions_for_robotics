@@ -6,14 +6,14 @@ import matplotlib.pyplot as plt
 from sympy import simplify, nsimplify, Derivative, diff,expand,sin,cos,Quaternion,symbols,solve
 
 DH=dict(l1=dict(Tetta=0,d=0.507,a=0.265,alfa=90),)
-        # l2=dict(Tetta=90,d=0,a=0.7,alfa=0),)
+        # l2=dict(Tetta=90,d=0,a=0.7,alfa=0),
         # l3=dict(Tetta=0,d=0,a=0.02,alfa=90),
         # l4=dict(Tetta=0,d=0.759,a=0,alfa=90),
         # l5=dict(Tetta=0,d=0,a=0,alfa=-90),
         # l6=dict(Tetta=180,d=0.143,a=0,alfa=0))
 
-angles=list([0,5,0,00,00,0])
-velocities=list([1.,1.,1.,1.,1.,1.])
+angles=list([45.,0.,0.,0.,0.,0.])
+velocities=list([10.,0.,0.,0.,0.,0.])
 
 links=[]
 for link_name,DH_par in DH.items():
@@ -25,15 +25,16 @@ for link_name,DH_par in DH.items():
     links.append(l)
 
 for a,v,l in zip(angles,velocities,links):
-    l.transform(Tetta=a,V_Tetta=0.5)
-    l.origin1.dq_to_frame().show(lw=3)
-    l.origin1.m_real.get_rxryrz()
+    l.transform(Tetta=a,V_Tetta=v)
+    l.origin1.dq_to_frame().show(lw=0.5)
+    # l.origin1.m_real.get_rxryrz()
 
 # links[-1].origin1.m_real.get_rxryrz()
 
 #1) численное решение:
-# cyfral=links[0].origin1.dq_to_matrix()
-# print(cyfral)
+cyfral=links[0].origin1.dq_to_matrix()
+
+print(cyfral)
 #аналитическое решение (должно совпадать с численным если подставлено значение tetta):
 # links[0].get_analytical(10)
 
