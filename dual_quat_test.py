@@ -324,7 +324,7 @@ class DQ():
 
     @staticmethod
     def dq_scalar_mult(dq, scalar):
-        return DQ(Qreal=Q.qs_mult(dq.m_real, scalar), Qdual=Q.qs_mult(dq.m_dual, scalar))
+        return DQ(Qreal=Q.qs_mult(dq.m_real, scalar), Qdual=Q.qs_mult(dq.m_dual, scalar), Qreal_=dq.m_real_*2, Qdual_=dq.m_dual_*2)
 
     @staticmethod
     def dq_conjugate(dq):
@@ -351,6 +351,14 @@ class DQ():
         dq1_ = self
         dq2_ = DQ.dq_conjugate_(self)
         return DQ.dq_mult_(dq1_, dq2_)
+
+    def dq_inverse(self):
+        #обратный ДК равен сопряженный ДК деленный на норму
+        dq_conj=DQ.dq_conjugate(self)
+        dq_conj_=DQ.dq_conjugate_(self)
+        dq_norm=DQ.dq_norm()
+        dq_norm_ = DQ.dq_norm_()
+        return DQ(Qreal=Q()) остановился тут нужно поделить конджугейт на норму и вернуть обратный ДК
 
     # public static DualQuaternion_c Normalize(DualQuaternion_c q)
     # {
@@ -595,7 +603,7 @@ class link():
     def transform(self, Tetta, V_Tetta=0., A_Tetta=0.):
         #NB! правила порядка умножения бикватернионов хорошо расписаны в "Гордеев. Кватернионы и бикватернионы с приложениями в геометрии и механике", стр.156, п.4,7,4
         # Tetta=np.radians(float(Tetta))
-        V_Tetta=np.radians(V_Tetta)
+
         # считаем положение линка в соответсвтии с правилами ДХ:
         # 1)вычисляем СК для начальной точки линка
         dq = DQ()
@@ -645,17 +653,28 @@ class link():
         # self.origin0.simplify()
         self.frame0_dq=copy.deepcopy(self.origin0)
         # self.origin1.simplify()
-        self.origin1_velocity=self.origin1.diff_()
+        self.origin1_velocity_temp1=self.origin1.diff_() #TODO! нужно скалярно умножить на 2 и поделить на дуальный кв origin1 (т.е. умножит на ДК обратный origin1)
+        #скалярно умножаем на 2
+        self.origin1_velocity_temp2=DQ.dq_scalar_mult(self.origin1_velocity_temp1,2)
+        #генерим ДК обратный для origin1, для этого нужно взять его conjugate и поделить на его же норму
+
+
+
+        self.frame1_dq_velocity=copy.deepcopy(self.origin1_velocity)
         self.frame1_dq=copy.deepcopy(self.origin1)
 
-        self.frame1_dq.m_real.q_to_axisangle()
+        #проверяем вокруг чего вращается СК на конце полученного звена - переводим кватернион в ост и угол (в результатах какая-то лажа)
+        axis_for_check, angle_for_check = self.frame1_dq.m_real.q_to_axisangle()
+        print(f'Euler axis={axis_for_check} \n Angle={angle_for_check}')
 
         #подставляем в формулы численные значения углов и скоростей и ускорений
         _coord=Function(f'Q{self.N}')(t)
-        self.origin1.insert_numbers([(_coord,Tetta)])
+        Tetta_ = np.radians(float(Tetta))
+        V_Tetta_ = np.radians(float(V_Tetta))
+        self.origin1.insert_numbers([(_coord,Tetta_)])
         _vel=Derivative(Function(f'Q{self.N}')(t),t)
-        self.origin1_velocity.insert_numbers([(_vel, V_Tetta),(_coord,Tetta)])
-        # if (abs(V_Tetta)<0.0000001):
+        self.origin1_velocity.insert_numbers([(_vel, V_Tetta_),(_coord,Tetta_)])
+        # if (abs(V_Tetta_)<0.0000001):
         #     self.origin1_velocity.m_real_=spQ(0.,0.,0.,0.,)
 
         #из полученных frame0_dq и frame1_dq нужно извлечь координаты x y z rx ry rz

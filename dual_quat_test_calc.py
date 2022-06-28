@@ -12,8 +12,8 @@ DH=dict(l1=dict(Tetta=0,d=0.507,a=0.265,alfa=90),)
         # l5=dict(Tetta=0,d=0,a=0,alfa=-90),
         # l6=dict(Tetta=180,d=0.143,a=0,alfa=0))
 
-angles=list([45.,0.,0.,0.,0.,0.])
-velocities=list([10.,0.,0.,0.,0.,0.])
+angles=list([0.,0.,0.,0.,0.,0.])
+velocities=list([1.,0.,0.,0.,0.,0.])
 
 links=[]
 for link_name,DH_par in DH.items():
