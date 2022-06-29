@@ -199,6 +199,26 @@ class Q():
     def diff_(self):
         return self.Q_.diff()
 
+class DN():
+    number_of_DN=0
+    def __init__(self, real=0., dual=0., real_=0., dual_=0.):
+        self.m_real = real
+        self.m_dual = dual
+
+        #для симпай
+        DN.number_of_DN+=1
+        N=str(DN.number_of_DN)
+        self.N=N
+        # self.wr_=symbols(f'wr{N}')
+        # self.xr_ = symbols(f'xr{N}')
+        # self.yr_ = symbols(f'yr{N}')
+        # self.zr_ = symbols(f'zr{N}')
+        # self.wd_=symbols(f'wd{N}')
+        # self.xd_ = symbols(f'xd{N}')
+        # self.yd_ = symbols(f'yd{N}')
+        # self.zd_ = symbols(f'zd{N}')
+        self.m_real_=real_
+        self.m_dual_=dual_
 
 class DQ():
     number_of_DQ=0
@@ -327,6 +347,36 @@ class DQ():
         return DQ(Qreal=Q.qs_mult(dq.m_real, scalar), Qdual=Q.qs_mult(dq.m_dual, scalar), Qreal_=dq.m_real_*2, Qdual_=dq.m_dual_*2)
 
     @staticmethod
+    def dn_mult_dq(dn,dq):
+        #умножение дуального числа на бикватернион (коммутативно) - Гордеев, стр139, п4,2, п.4
+        dn_real=dn.m_real
+        dn_dual = dn.m_dual
+        dq_real=dq.m_real
+        dq_dual=dq.m_dual
+
+        dn_real_=dn.m_real_
+        dn_dual_ = dn.m_dual_
+        dq_real_=dq.m_real_
+        dq_dual_=dq.m_dual_
+        return DQ(Qreal=Q(w=dn_real*dq_real.w,
+                   x=dn_real*dq_real.x,
+                   y=dn_real*dq_real.y,
+                   z=dn_real*dq_real.z),
+           Qdual=Q(w=dn_real*dq_dual.w+dn_dual*dq_real.w,
+                   x=dn_real*dq_dual.x+dn_dual*dq_real.x,
+                   y=dn_real*dq_dual.y+dn_dual*dq_real.y,
+                   z=dn_real*dq_dual.z+dn_dual*dq_real.z),
+           Qreal_=spQ(a=dn_real_ * dq_real_.a,
+                   b=dn_real_ * dq_real_.b,
+                   c=dn_real_ * dq_real_.c,
+                   d=dn_real_ * dq_real_.d),
+           Qdual_=spQ(a=dn_real_ * dq_dual_.a + dn_dual_ * dq_real_.a,
+                      b=dn_real_ * dq_dual_.b + dn_dual_ * dq_real_.b,
+                      c=dn_real_ * dq_dual_.c + dn_dual_ * dq_real_.c,
+                      d=dn_real_ * dq_dual_.d + dn_dual_ * dq_real_.d))
+
+
+    @staticmethod
     def dq_conjugate(dq):
         return DQ(Qreal=Q.q_conjugate(dq.m_real), Qdual=Q.q_conjugate(dq.m_dual))
 
@@ -341,7 +391,7 @@ class DQ():
         # DQreal*DQreal_conj + eps*(DQdual*DQreal_conj+DQreal*DQdual_conj). Total: norm(DQ) = (DQreal*DQreal_conj; DQdual*DQreal_conj+DQreal*DQdual_conj)
         dq1 = self
         dq2 = DQ.dq_conjugate(self)
-        return DQ.dq_mult(dq1, dq2)
+        return DQ.dq_mult(dq1, dq2) #TODO! возможно здесь ошибка, должно возвращать дуальное число, проверить! Гордеев стр.138
 
     def dq_norm_(self):
         # полная формула нормы дуального кватерниона какая-то непонятная, везде пишут, что вроде бы формула ниже - это для единичного дуального кватерниона
@@ -353,12 +403,14 @@ class DQ():
         return DQ.dq_mult_(dq1_, dq2_)
 
     def dq_inverse(self):
+        #Челноков, формула 1,105, стр70
         #обратный ДК равен сопряженный ДК деленный на норму
         dq_conj=DQ.dq_conjugate(self)
         dq_conj_=DQ.dq_conjugate_(self)
-        dq_norm=DQ.dq_norm()
-        dq_norm_ = DQ.dq_norm_()
-        return DQ(Qreal=Q()) остановился тут нужно поделить конджугейт на норму и вернуть обратный ДК
+        dq_norma=self.dq_norm() #норма ДК - это дуальное число
+        dq_norma_ = self.dq_norm_()
+        DQ.dn_mult_dq()
+        # return DQ(Qreal=Q()) остановился тут нужно поделить конджугейт на норму и вернуть обратный ДК
 
     # public static DualQuaternion_c Normalize(DualQuaternion_c q)
     # {
@@ -657,7 +709,7 @@ class link():
         #скалярно умножаем на 2
         self.origin1_velocity_temp2=DQ.dq_scalar_mult(self.origin1_velocity_temp1,2)
         #генерим ДК обратный для origin1, для этого нужно взять его conjugate и поделить на его же норму
-
+        inverse_dq_test=self.origin1.dq_inverse()
 
 
         self.frame1_dq_velocity=copy.deepcopy(self.origin1_velocity)
