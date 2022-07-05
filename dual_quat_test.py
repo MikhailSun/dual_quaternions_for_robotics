@@ -199,6 +199,10 @@ class Q():
     def diff_(self):
         return self.Q_.diff()
 
+    def diff(self):
+        #тут должна быть штука для численного вычисления производной кватерниона
+        pass
+
 class DN():
     number_of_DN=0
     def __init__(self, real=0., dual=0., real_=0., dual_=0.):
@@ -409,7 +413,8 @@ class DQ():
         dq_conj_=DQ.dq_conjugate_(self)
         dq_norma=self.dq_norm() #норма ДК - это дуальное число
         dq_norma_ = self.dq_norm_()
-        DQ.dn_mult_dq()
+        test=DQ.dn_mult_dq(dq_norma,dq_conj)
+        test_ = DQ.dn_mult_dq(dq_norma_, dq_conj_)
         # return DQ(Qreal=Q()) остановился тут нужно поделить конджугейт на норму и вернуть обратный ДК
 
     # public static DualQuaternion_c Normalize(DualQuaternion_c q)
@@ -568,6 +573,23 @@ class DQ():
         ang = f' Angle={round(Angle, 3)}'
         ax.text(x=x, y=y, z=z, s=coords + ang, fontsize='xx-small')
         ax.plot(x_rot_axis, y_rot_axis, z_rot_axis, ls='--', marker='.', ms=0.5, lw=0.5)
+    def get_plukker_coordinates(self):
+        #Гордеев стр154
+        L=sqrt(self.m_real.x**2+self.m_real.y**2+self.m_real.z**2)
+        real_part=[self.m_real.x/L,
+                   self.m_real.y/L,
+                   self.m_real.z/L]
+        dual_part=[self.m_dual.x/L+self.m_real.w*self.m_real.x*self.m_dual.w/L/L/L,
+                   self.m_dual.y/L+self.m_real.w*self.m_real.y*self.m_dual.w/L/L/L,
+                   self.m_dual.z/L+self.m_real.w*self.m_real.z*self.m_dual.w/L/L/L]
+        fi=np.degrees(2*np.arccos(self.m_real.w))
+        fi0=-2*self.m_dual.w/L
+        print(f'real part={real_part}\n'
+              f'dual part={dual_part}\n'
+              f'fi={fi}\n'
+              f'fi0={fi0}')
+
+        return real_part, dual_part
 
 
 class frame():
@@ -709,7 +731,7 @@ class link():
         #скалярно умножаем на 2
         self.origin1_velocity_temp2=DQ.dq_scalar_mult(self.origin1_velocity_temp1,2)
         #генерим ДК обратный для origin1, для этого нужно взять его conjugate и поделить на его же норму
-        inverse_dq_test=self.origin1.dq_inverse()
+        # inverse_dq_test=self.origin1.dq_inverse()
 
 
         self.frame1_dq_velocity=copy.deepcopy(self.origin1_velocity)
