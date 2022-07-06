@@ -27,6 +27,8 @@ for link_name,DH_par in DH.items():
 for a,v,l in zip(angles,velocities,links):
     l.transform(Tetta=a,V_Tetta=v)
     l.origin1.dq_to_frame().show(lw=0.5)
+    unit_axis,fi=l.origin1.m_real.q_to_axisangle
+    отобразить на граифке оси кватерниона
     # l.origin1.m_real.get_rxryrz()
 
 # links[-1].origin1.m_real.get_rxryrz()
