@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from sympy import Quaternion as spQ
-from sympy import symbols,sin,cos,sqrt,nan,simplify,nsimplify,Derivative,diff,expand,conjugate,Matrix,Function
+from sympy import symbols,sin,cos,sqrt,nan,simplify,nsimplify,Derivative,diff,expand,conjugate,Matrix,Function,acos
 import copy
 
 fig = plt.figure(dpi=150)
@@ -595,6 +595,8 @@ class DQ():
         return real_part, dual_part
 
 
+
+
 class frame():
     number_of_link = 0
     def __init__(self, x=(1., 0., 0.), y=(0., 1., 0.), z=(0., 0., 1.), base_point=(0.,0.,0.)):
@@ -672,7 +674,7 @@ class link():
         else:
             self.origin0 = origin_quat
         self.origin1=DQ()
-        self.origin1_velocity=DQ()
+
 
 
 
@@ -730,14 +732,14 @@ class link():
         # self.origin0.simplify()
         self.frame0_dq=copy.deepcopy(self.origin0)
         # self.origin1.simplify()
-        self.origin1_velocity_temp1=self.origin1.diff_() #TODO! нужно скалярно умножить на 2 и поделить на дуальный кв origin1 (т.е. умножит на ДК обратный origin1)
+        # self.origin1_velocity_temp1=self.origin1.diff_() #TODO! нужно скалярно умножить на 2 и поделить на дуальный кв origin1 (т.е. умножит на ДК обратный origin1)
         #скалярно умножаем на 2
-        self.origin1_velocity_temp2=DQ.dq_scalar_mult(self.origin1_velocity_temp1,2)
+        # self.origin1_velocity_temp2=DQ.dq_scalar_mult(self.origin1_velocity_temp1,2)
         #генерим ДК обратный для origin1, для этого нужно взять его conjugate и поделить на его же норму
         # inverse_dq_test=self.origin1.dq_inverse()
 
 
-        self.frame1_dq_velocity=copy.deepcopy(self.origin1_velocity)
+        # self.frame1_dq_velocity=copy.deepcopy(self.origin1_velocity)
         self.frame1_dq=copy.deepcopy(self.origin1)
 
         #проверяем вокруг чего вращается СК на конце полученного звена - переводим кватернион в ост и угол (в результатах какая-то лажа)
@@ -749,8 +751,8 @@ class link():
         Tetta_ = np.radians(float(Tetta))
         V_Tetta_ = np.radians(float(V_Tetta))
         self.origin1.insert_numbers([(_coord,Tetta_)])
-        _vel=Derivative(Function(f'Q{self.N}')(t),t)
-        self.origin1_velocity.insert_numbers([(_vel, V_Tetta_),(_coord,Tetta_)])
+        # _vel=Derivative(Function(f'Q{self.N}')(t),t)
+        # self.origin1_velocity.insert_numbers([(_vel, V_Tetta_),(_coord,Tetta_)])
         # if (abs(V_Tetta_)<0.0000001):
         #     self.origin1_velocity.m_real_=spQ(0.,0.,0.,0.,)
 
@@ -763,6 +765,32 @@ class link():
         # как перевести данные из кватерниона в rx ry rz
 
         print(f'Link {self.N} completed')
+
+    #попробуем считать аналитически скорость из дуального кватерниона
+    def calc_rot_velocity(self):
+        #1)поиск производной реальной составляющей ДК (К ориентации - КО)
+        diff_DQreal=self.frame1_dq.m_real_.diff()
+        #2)начальное положение КО
+        Q1=self.frame1_dq.m_real_
+        # Q1_unit_vector=Matrix(Q1.to_axis_angle()[0])
+        Q1_vector=Matrix([Q1.b, Q1.c, Q1.d])
+        #3) конечное положение КО через время dt
+        Q2=self.frame1_dq.m_real_+diff_DQreal
+        # Q2_unit_vector=Matrix(Q2.to_axis_angle()[0])
+        Q2_vector = Matrix([Q2.b, Q2.c, Q2.d])
+        #4)поиск оси вращения через векторное произведение единичных вектров кватернионов Q1 и Q2
+        rot_axis = Q1_vector.cross(Q2_vector)
+        # rot_axis=simplify(rot_axis)
+        #5) поиск угла поворота между векторами Q1 и Q2 через скалярное произведдение
+        ang_velocity=acos(Q1_vector.dot(Q2_vector)/(Q1_vector.norm()*Q2_vector.norm()))
+        ang_velocity=simplify(ang_velocity)
+        #6) создание кватерниона Q3 из полученного угла ang_velocity и оси rot_axis
+        Q3=spQ.from_axis_angle(rot_axis, ang_velocity)
+        #7) поиск производной от текущего угла текущего кватерниона
+        Q4=spQ.from_axis_angle(self.frame1_dq.m_real_.to_axis_angle()[0],diff_DQreal.a)
+        #8) поиск результирующего кватерниона, который содержит информацию о скорости и оси вращения в текущий момент
+        Q5=Q3.mul(Q4)\
+
 
     #методы для получения полностью аналитических формул
     # def get_origin0_real(self):
