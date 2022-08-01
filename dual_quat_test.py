@@ -675,9 +675,6 @@ class link():
             self.origin0 = origin_quat
         self.origin1=DQ()
 
-
-
-
     #всегда в соответсвтие с ДХ подразумеваем, что вращение происходит относительно оси Z
     def transform(self, Tetta, V_Tetta=0., A_Tetta=0.):
         #NB! правила порядка умножения бикватернионов хорошо расписаны в "Гордеев. Кватернионы и бикватернионы с приложениями в геометрии и механике", стр.156, п.4,7,4
@@ -767,30 +764,45 @@ class link():
         print(f'Link {self.N} completed')
 
     #попробуем считать аналитически скорость из дуального кватерниона
-    def calc_rot_velocity(self):
+    def calc_rot_velocity(self, Tetta, V_Tetta):
+        f_name=Function(f'Q{self.N}')(t)
+        df_name=Derivative(f_name,t)
+        ang=symbols('ang')
+        vel = symbols('vel')
         #1)поиск производной реальной составляющей ДК (К ориентации - КО)
         diff_DQreal=self.frame1_dq.m_real_.diff()
         #2)начальное положение КО
-        Q1=self.frame1_dq.m_real_
+        q1=self.frame1_dq.m_real_
         # Q1_unit_vector=Matrix(Q1.to_axis_angle()[0])
-        Q1_vector=Matrix([Q1.b, Q1.c, Q1.d])
+        q1_vector=Matrix([q1.b, q1.c, q1.d])
         #3) конечное положение КО через время dt
-        Q2=self.frame1_dq.m_real_+diff_DQreal
+        q2=self.frame1_dq.m_real_+diff_DQreal
         # Q2_unit_vector=Matrix(Q2.to_axis_angle()[0])
-        Q2_vector = Matrix([Q2.b, Q2.c, Q2.d])
+        q2_vector = Matrix([q2.b, q2.c, q2.d])
         #4)поиск оси вращения через векторное произведение единичных вектров кватернионов Q1 и Q2
-        rot_axis = Q1_vector.cross(Q2_vector)
+        rot_axis = q1_vector.cross(q2_vector)
+        x_axis=rot_axis[0].subs([(df_name,V_Tetta),(f_name,Tetta)])
+        y_axis = rot_axis[1].subs([(df_name, V_Tetta), (f_name, Tetta)])
+        z_axis = rot_axis[2].subs([(df_name, V_Tetta), (f_name, Tetta)])
+        plt.plot(x_axis, y_axis, z_axis, lw=2, c='black')
         # rot_axis=simplify(rot_axis)
         #5) поиск угла поворота между векторами Q1 и Q2 через скалярное произведдение
-        ang_velocity=acos(Q1_vector.dot(Q2_vector)/(Q1_vector.norm()*Q2_vector.norm()))
+        ang_velocity=acos(q1_vector.dot(q2_vector)/(q1_vector.norm()*q2_vector.norm()))
         ang_velocity=simplify(ang_velocity)
         #6) создание кватерниона Q3 из полученного угла ang_velocity и оси rot_axis
-        Q3=spQ.from_axis_angle(rot_axis, ang_velocity)
+        q3=spQ.from_axis_angle(rot_axis, ang_velocity)
         #7) поиск производной от текущего угла текущего кватерниона
-        Q4=spQ.from_axis_angle(self.frame1_dq.m_real_.to_axis_angle()[0],diff_DQreal.a)
+        q4=spQ.from_axis_angle(self.frame1_dq.m_real_.to_axis_angle()[0],diff_DQreal.a)
         #8) поиск результирующего кватерниона, который содержит информацию о скорости и оси вращения в текущий момент
-        Q5=Q3.mul(Q4)\
-
+        q5=q3.mul(q4)
+        #9) для упрощения заменяем символы на ang - угол и vel - угловая скорость
+        q6=q5.subs([(df_name,vel),
+                    (f_name,ang)])
+        # print(q6)
+        #10) подставляем численные значения в кватернион выше
+        q7=q6.subs([(vel,np.radians(V_Tetta)),
+                    (ang,np.radians(Tetta))])
+        print(q7)
 
     #методы для получения полностью аналитических формул
     # def get_origin0_real(self):
