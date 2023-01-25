@@ -134,6 +134,31 @@ class Q():
         return self
 
     @staticmethod
+    def q_log(q):
+        #log(q)=[0;Tetta*v]
+        Tetta=np.arccos(q.w)
+        unit_v=np.sqrt(q.x**2+q.y**2+q.z**2)
+        return Q(w=0., x=Tetta*q.x/unit_v, y=Tetta*q.y/unit_v, z=Tetta*q.z/unit_v)
+
+    @staticmethod
+    def q_exp(q):
+        #exp([0;Tetta*v]) = [cos(Tetta); sin(Tetta)*v]
+        if (q.w!=0):
+            print('Error!')
+            raise SystemExit
+        Tetta = np.sqrt(q.x ** 2 + q.y ** 2 + q.z ** 2)
+
+        return Q(w=np.cos(Tetta), x=np.sin(Tetta)*q.x/Tetta, y=np.sin(Tetta)*q.y/Tetta, z=np.sin(Tetta)*q.z/Tetta)
+
+    @staticmethod
+    def q_pow(q,t):
+        #q^t = exp(t*log(q))
+        log_q=Q.q_log(q)
+        t_mult_log_q=Q.qs_mult(log_q,t)
+        return Q.q_exp(t_mult_log_q)
+
+
+    @staticmethod
     def v_normalize(v,v_sp=None):
         norm = np.sqrt(sum(x * x for x in v))
         res = []
@@ -593,6 +618,17 @@ class DQ():
               f'fi0={fi0}')
 
         return real_part, dual_part
+
+def Slerp(Q1, Q2, t):
+    # slerp=q1*(q1^-1*q2)^t #https://habr.com/ru/post/426863/
+    # q^t=exp(t*log(q)) = norm(q)*(cos(t*fi)+n*sin(t*fi))
+    # q^t = norm(q)^t * (cos(x*fi) + unit_vect*sin(x*fi) )
+    # see here: dam_eb_koch_m_lillholm_m_quaternions_interpolation_and_anima.pdf
+    Q1inv=Q.q_inverse(Q1)
+    Qtemp1=Q.q_mult(Q1inv,Q2)
+    Qtemp2=Q.q_pow(Qtemp1,t)
+    return Q.q_mult(Q1, Qtemp2)
+
 
 
 
