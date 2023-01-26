@@ -1,7 +1,7 @@
 import numpy as np
 import makecharts as mc
 import dual_quat_test as dqt
-from dual_quat_test import DQ,link,frame
+from dual_quat_test import DQ,link,frame,Q,Slerp
 import matplotlib.pyplot as plt
 from sympy import simplify, nsimplify, Derivative, diff,expand,sin,cos,Quaternion,symbols,solve
 
@@ -37,8 +37,8 @@ for a,v,l in zip(angles,velocities,links):
     l.origin1.dq_to_frame().show(lw=0.5)
     # unit_axis,fi=l.origin1.m_real.q_to_axisangle
     # отобразить на граифке оси кватерниона
-    l.origin1.m_real.get_rxryrz()
-    l.calc_rot_velocity(Tetta=a,V_Tetta=v)
+    # l.origin1.m_real.get_rxryrz()
+    # l.calc_rot_velocity(Tetta=a,V_Tetta=v)
 
 # links[-1].origin1.m_real.get_rxryrz()
 # links[-1].origin1.calc_rot_velocity()

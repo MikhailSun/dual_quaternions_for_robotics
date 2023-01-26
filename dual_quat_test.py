@@ -42,7 +42,7 @@ class Q():
         str2 = f'   norm={self.q_norm()}'
         return str1 + str2
 
-    def make_quat_from_angle_and_axis(self, angle=0, axis=(0.,0.,0.), angle_=0., axis_=(0.,0.,0.)):
+    def make_quat_from_angle_and_axis(self, angle=0., axis=(0.,0.,0.), angle_=0., axis_=(0.,0.,0.)):
         # c1 = 0.0000000001 if np.sin(np.radians(angle) / 2) == 0 else np.sin(np.radians(angle) / 2)
         c1=np.sin(np.radians(angle) / 2)
         self.w = np.cos(np.radians(angle) / 2)
@@ -153,7 +153,7 @@ class Q():
     @staticmethod
     def q_pow(q,t):
         #q^t = exp(t*log(q))
-        log_q=Q.q_log(q)
+        log_q=Q.q_log(q).normalize()
         t_mult_log_q=Q.qs_mult(log_q,t)
         return Q.q_exp(t_mult_log_q)
 
